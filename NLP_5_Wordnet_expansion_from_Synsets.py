@@ -120,10 +120,10 @@ def find_synonyms(raw_df, aspect_list, opinion_list):
                     else:
                         list_of_opinion_synonyms.append(synonyms_all)
 
-        print(raw_df["aspect"][i])
-        print(raw_df[words][i])
-        print(list_of_aspect_synonyms)
-        print(list_of_opinion_synonyms)
+        # print(raw_df["aspect"][i])
+        # print(raw_df[words][i])
+        # print(list_of_aspect_synonyms)
+        # print(list_of_opinion_synonyms)
         full_list_of_aspect_synonyms.append(list_of_aspect_synonyms)
         full_list_of_opinion_synonyms.append(list_of_opinion_synonyms)
     raw_df["aspect_synonyms"] = pd.Series(full_list_of_aspect_synonyms).values
@@ -139,8 +139,7 @@ def find_wordnet_synonyms_adjectives_adverbs(noun_synset):
     synonym_words = []
     original_synset = noun_synset
     for similar in original_synset.similar_tos():
-        print("Original: %s satellite_adjective: %s" % (
-            original_synset, similar))
+        # print("Original: %s satellite_adjective: %s" % (original_synset, similar))
         synonym_words.append(similar.lemma_names()[0])
     end = timer()
     logging.debug("Find Wordnet(all) cycle: %.2f seconds" % (end - start))
@@ -153,8 +152,7 @@ def find_wordnet_synonyms_all_words(noun_synset):
     synonym_words = []
     original_synset = noun_synset
     for synonym_word in original_synset.lemma_names():
-        print("Original: %s synonym: %s" % (
-        original_synset, synonym_word))
+        # print("Original: %s synonym: %s" % (original_synset, synonym_word))
         if synonym_word != original_synset.lemma_names()[0]:
             synonym_words.append(synonym_word)
     end = timer()
@@ -172,12 +170,11 @@ def find_wordnet_synonyms_nouns(noun_synset):
             if (original_synset != synonym_synset) and (original_synset.lch_similarity(synonym_synset) >= 2.5):
                 if synonym_synset.lemma_names()[0] not in synonym_words:
                     synonym_words.append(synonym_synset.lemma_names()[0])
-                print("Original: %s other synsets: %s LCH-similarity %s" % (
-                    original_synset, synonym_synset, original_synset.lch_similarity(synonym_synset)))
+                # print("Original: %s other synsets: %s LCH-similarity %s" % (original_synset, synonym_synset, original_synset.lch_similarity(synonym_synset)))
                 for nested_hyponym_synset in synonym_synset.hyponyms():
                     if original_synset.lch_similarity(nested_hyponym_synset) >= 2.5:
                         synonym_words.append(nested_hyponym_synset.lemma_names()[0])
-                        print("Other synset: %s nested_hyponym words: %s LCH(original) %s" % (synonym_synset, nested_hyponym_synset, original_synset.lch_similarity(nested_hyponym_synset)))
+                        # print("Other synset: %s nested_hyponym words: %s LCH(original) %s" % (synonym_synset, nested_hyponym_synset, original_synset.lch_similarity(nested_hyponym_synset)))
     end = timer()
     logging.debug("Wordnet cycle: %.2f seconds" % (end - start))
     return synonym_words
@@ -225,32 +222,53 @@ def create_new_aspects_from_synonyms(raw_df):
     start = timer()
     df = raw_df
     # This sets the lists that will be iterated over
-    iterateble_aspect_opinion = ["aspect", "opinion"]
     df3 = pd.DataFrame(columns=df.columns)
+    df4 = pd.DataFrame(columns=df.columns)
+    df5 = pd.DataFrame(columns=df.columns)
     k = 0
     for i, phrase in enumerate(df["aspect"]):
         # This matches aspects against synonyms.
-        for aolist in iterateble_aspect_opinion:
-            multi_word_aspect_check = False
-            for aspects in df[aolist + "_synonyms"][i]:
-                if multi_word_aspect_check is False:
-                    # print("Synonyms length: %s" % (len(df[aolist + "_synonyms"][i])))
-                    if len(df[aolist + "_synonyms"][i]) > 1:
-                        multi_word_aspect_check = True
-                        for word in itertools.product(*df[aolist + "_synonyms"][i]):
-                            combined_word = " ".join(word)
-                            df3.loc[len(df3)] = df.loc[i]
-                            df3[aolist][k] = combined_word
-                            k += 1
-                    if multi_word_aspect_check is False and len(df[aolist + "_synonyms"][i]) > 0:
-                        for single_aspect in aspects:
-                            df3.loc[len(df3)] = df.loc[i]
-                            df3[aolist][k] = single_aspect
-                            k += 1
-    end = timer()
-    logging.debug("Find synonyms from aspects: %.2f seconds" % (end - start))
+        multi_word_aspect_check = False
+        for aspects in df["aspect_synonyms"][i]:
+            if multi_word_aspect_check is False:
+                # print("Synonyms length: %s" % (len(df[aolist + "_synonyms"][i])))
+                if len(df["aspect_synonyms"][i]) > 1:
+                    multi_word_aspect_check = True
+                    for word in itertools.product(*df["aspect_synonyms"][i]):
+                        combined_word = " ".join(word)
+                        df3.loc[len(df3)] = df.loc[i]
+                        df3["aspect"][k] = combined_word
+                        k += 1
+                if multi_word_aspect_check is False and len(df["aspect_synonyms"][i]) > 0:
+                    for single_aspect in aspects:
+                        df3.loc[len(df3)] = df.loc[i]
+                        df3["aspect"][k] = single_aspect
+                        k += 1
 
-    return pd.concat([df, df3], ignore_index=True)
+    df3 = pd.concat([df, df3], ignore_index=True)
+    k = 0
+    for i, phrase in enumerate(df3["aspect"]):
+        # This matches aspects against synonyms.
+        multi_word_aspect_check = False
+        for aspects in df3["opinion_synonyms"][i]:
+            if multi_word_aspect_check is False:
+                # print("Synonyms length: %s" % (len(df[aolist + "_synonyms"][i])))
+                if len(df3["opinion_synonyms"][i]) > 1:
+                    multi_word_aspect_check = True
+                    for word in itertools.product(*df3["opinion_synonyms"][i]):
+                        combined_word = " ".join(word)
+                        df4.loc[len(df4)] = df3.loc[i]
+                        df4["opinion"][k] = combined_word
+                        k += 1
+                if multi_word_aspect_check is False and len(df3["opinion_synonyms"][i]) > 0:
+                    for single_aspect in aspects:
+                        df4.loc[len(df4)] = df3.loc[i]
+                        df4["opinion"][k] = single_aspect
+                        k += 1
+
+    end = timer()
+    logging.debug("Create new aspects from synonyms: %.2f seconds" % (end - start))
+    return pd.concat([df3, df4], ignore_index=True)
 
 def reformat_output_file(raw_df, selection):
     if selection is 1:
@@ -298,8 +316,6 @@ def main(raw_df, name):
     df = raw_df
     df = remake_synset_lists(df)
     df = find_synonyms(df, "redone_aspect_synset", "redone_opinion_synset")
-    print("yes")
-    # df = find_synonyms(df)
     df = create_new_aspects_from_synonyms(df)
     df["aspect"] = flatten_column_lists(df["aspect"])
     df["opinion"] = flatten_column_lists(df["opinion"])
